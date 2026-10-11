@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>تجميع المعاملات</title>
+<style>
+:root{--bg:#f3f6f6;--surface:#fff;--surface-2:#eef3f3;--line:#d9e2e2;--ink:#12292b;--ink-2:#37575a;--ink-3:#6b8588;--accent:#0f766e;--accent-soft:#d6efec;--ok:#177a3c;--ok-soft:#dcf3e3;--warn:#8a5a00;--warn-soft:#fdeccb;--bad:#a1342b;--bad-soft:#fbe0dd;--info:#1d5fa8;--info-soft:#dbe9f8;--r:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1819;--surface:#14262a;--surface-2:#1b3135;--line:#27434a;--ink:#e6f1f1;--ink-2:#b4cacc;--ink-3:#84a0a3;--accent:#2dd4bf;--accent-soft:#12403f;--ok:#5fd68a;--ok-soft:#14361f;--warn:#f0b955;--warn-soft:#3a2d10;--bad:#f28b82;--bad-soft:#3d1c19;--info:#7db8f5;--info-soft:#132c47}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Naskh Arabic",sans-serif;line-height:1.6;padding:14px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left))}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:21px;margin:6px 0 4px}
+.sub{margin:0 0 14px;color:var(--ink-3);font-size:14px}
+.surface{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sec-title h3{margin:0;font-size:15px}
+.hint{font-size:12.5px;color:var(--ink-3)}
+textarea,input.field{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea:focus,input.field:focus{outline:2px solid var(--accent);outline-offset:1px}
+#groupInput{height:220px;direction:rtl;text-align:right;resize:vertical}
+.gctl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.gctl .ctl{display:flex;flex-direction:column;gap:5px}
+.gctl .ctl>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.gctl .full{grid-column:1/-1}
+.gctl input[type=number]{text-align:center;direction:ltr;font-weight:700}
+.gctl input.sepfield{text-align:center}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg label{flex:1;position:relative}
+.seg input{position:absolute;opacity:0;inset:0}
+.seg span{display:block;text-align:center;padding:10px 6px;font-size:14px;font-weight:600;background:var(--surface-2);color:var(--ink-2)}
+.seg input:checked+span{background:var(--accent);color:#fff}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--surface-2);color:var(--ink);cursor:pointer;min-height:42px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.quiet{background:transparent}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:14px}
+.btn:active{transform:scale(.97)}
+.actions{display:flex;gap:10px;margin-top:12px}
+.actions .btn{flex:1}
+.gstats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.gstat{display:flex;flex-direction:column;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.gstat b{font-size:22px;line-height:1.3;font-variant-numeric:tabular-nums}
+.gstat span{font-size:12.5px;color:var(--ink-3)}
+.gnote{padding:10px 0;border-top:1px dashed var(--line)}
+.gnote-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.gnote-h b{color:var(--ink-2)}
+.gnote-b{display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end}
+.gnote-b code{padding:1px 9px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);font-size:12.5px;font-family:inherit;unicode-bidi:isolate}
+.gok{color:var(--ok);font-weight:600}
+.tag{padding:2px 9px;border-radius:7px;font-size:12px;font-weight:700}
+.tag.dup{background:var(--bad-soft);color:var(--bad)}
+.tag.rev{background:var(--warn-soft);color:var(--warn)}
+.tag.info{background:var(--info-soft);color:var(--info)}
+.empty{padding:26px 12px;text-align:center;color:var(--ink-3);border:1px dashed var(--line);border-radius:var(--r)}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start}
+.gcard{min-width:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.gcard.done{border-color:var(--ok)}
+.gcard-head{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.gcard-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gcard-chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:12px;padding:2px 9px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.chip[data-tone=ok]{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip[data-tone=warn]{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.gtext{margin:0;padding:10px 12px;max-height:380px;overflow:auto;direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;font-size:13.5px;line-height:1.7;white-space:pre;user-select:text;-webkit-user-select:text}
+#toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-80px);background:#12292b;color:#fff;padding:10px 18px;border-radius:12px;font-weight:600;font-size:14px;max-width:92vw;text-align:center;opacity:0;transition:.25s;z-index:9;pointer-events:none}
+#toast.show{transform:translate(-50%,0);opacity:1}
+#toast[data-kind=err]{background:#8e2b24}
+#toast[data-kind=warn]{background:#7a4b08}
+@media(min-width:700px){.gstats{grid-template-columns:repeat(4,minmax(0,1fr))}.gctl{grid-template-columns:repeat(4,1fr)}.gctl .full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>تجميع المعاملات</h1>
+<p class="sub">الصق كل المعاملات مرة واحدة، حدّد عدد العمال في المعاملة الواحدة، وهتتجمّع لك في معاملات جاهزة للنسخ. كل الشغل بيحصل جوه المتصفح بتاعك ومفيش حاجة بتتبعت لأي مكان.</p>
+
+<div class="surface">
+  <div class="sec-title"><h3>المعاملات (النص الخام)</h3><span class="hint">المعاملات بتتفصل بخط <b>----------</b> (أو الفاصل اللي تكتبه تحت)، والموحد ممكن يكون فوق الهويات أو تحتها.</span></div>
+  <textarea id="groupInput" spellcheck="false" placeholder="الصق المعاملات هنا…"></textarea>
+  <div class="actions">
+    <button id="groupPasteBtn" class="btn primary" type="button">لصق من الحافظة</button>
+    <button id="groupClearBtn" class="btn quiet" type="button">مسح النص</button>
+  </div>
+  <div class="gctl">
+    <label class="ctl"><span>عدد العمال في المعاملة</span><input id="groupLimit" class="field" type="number" min="1" max="1000" step="1" inputmode="numeric" value="18"></label>
+    <label class="ctl"><span>أقصى عدد موحدات</span><input id="groupMaxU" class="field" type="number" min="1" max="100" step="1" inputmode="numeric" value="8"></label>
+    <div class="ctl"><span>الفاصل بين الموحدات</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="groupGap" value="1"><span>سطر فاضي</span></label>
+        <label><input type="radio" name="groupGap" value="2" checked><span>سطرين</span></label>
+      </div>
+    </div>
+    <label class="ctl full"><span>الفاصل بين المعاملات (اختياري)</span><input id="groupSepIn" class="field sepfield" type="text" dir="auto" spellcheck="false" placeholder="تلقائي: ----------"></label>
+  </div>
+</div>
+
+<div id="groupStats" class="gstats"></div>
+<div id="groupNotes" class="surface" hidden></div>
+<div id="groupResults"></div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ---------- المحرك: قراءة النص + دمج المكرر + التجميع (دوال نقية بدون واجهة) ---------- */
+const GRP_SEP = /[-_=*~\u0640]{4,}/;   // فاصل المعاملات: 4 رموز أو أكتر ورا بعض (---- أو ____ ...)
+
+function grpNormalizeText(s) {
+  return String(s || '')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\u061C\uFEFF]/g, '')   // علامات الاتجاه اللي بتيجي مع النسخ من الصفحات العربي
+    .replace(/[\u00A0\u2007\u202F]/g, ' ')
+    .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))      // أرقام عربية ← إنجليزي
+    .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')                // كل أنواع الشرطة ← -
+    .replace(/\r/g, '');
+}
+
+/* فاصل المعاملات: لو المستخدم كتب فاصل بنفسه نستخدمه، وإلا بنرجع للفاصل التلقائي (خط الشرط) */
+function grpBuildSep(custom) {
+  const t = grpNormalizeText(custom).trim();
+  if (!t) return GRP_SEP;
+  const esc = c => c.replace(/[.*+?^${}()|[\]\\\/-]/g, '\\$&');
+  const chars = [...t];
+  // نفس الرمز متكرر (---- أو .... أو ****): أي عدد أكبر منه يتحسب فاصل برضو
+  if (chars.every(c => c === chars[0])) return new RegExp('(?:' + esc(chars[0]) + '){' + chars.length + ',}');
+  return new RegExp(esc(t));
+}
+
+function grpParse(rawText, limit, maxU, sepRe) {
+  maxU = Math.max(1, maxU || 8);                 // أقصى عدد موحدات في المعاملة الواحدة بعد التجميع
+  const text = grpNormalizeText(rawText);
+  const blocks = text.split(sepRe || GRP_SEP).map(b => b.trim()).filter(Boolean);
+  const N = { multi: [], rev: new Map(), fmt: new Map(), variant: [], mergeU: [], dupId: new Map(),
+              conflict: [], noIds: [], oversize: [] };
+  const groups = new Map();     // مفتاح الموحد ← {disp, ids, occ, forms, order}
+  const idOwner = new Map();    // الهوية ← مفتاح الموحد اللي اتحطت تحته
+  const orphans = [];
+  let blockNo = 0, order = 0;
+
+  for (const block of blocks) {
+    // «الرقم الوطني الموحد» (بيبدأ بـ 7) مش هوية ولا موحد، نشيله قبل القراءة
+    const body = block.replace(/الرقم\s*الوطني\s*الموحد\s*[:：]?\s*\d+/g, ' ');
+
+    const unis = [];
+    for (const m of body.matchAll(/(?<!\d)(\d{1,8})[ \t]*[-_][ \t]*(\d{1,8})(?:[ \t]*[-_][ \t]*(\d{1,8}))?(?!\d)/g)) {
+      if (m[3] !== undefined) continue;                                        // تاريخ زي 23-09-2026
+      let a = m[1], b = m[2];
+      if (/^(19|20)\d{2}$/.test(a) || /^(19|20)\d{2}$/.test(b)) continue;      // سنة
+      const la = a.length, lb = b.length;
+      if (!((la <= 2 && lb >= 2 && lb <= 8) || (lb <= 2 && la >= 2 && la <= 8))) continue;
+      let reversed = false;
+      if (la > lb) { [a, b] = [b, a]; reversed = true; }                       // الجزء الصغير (1-2 خانة) هو اللي ييجي الأول
+      unis.push({ raw: m[0].trim(), pre: a, suf: b, disp: `${a}-${b}`, reversed });
+    }
+    const ids = body.match(/(?<!\d)[123]\d{9}(?!\d)/g) || [];
+    if (!unis.length && !ids.length) continue;
+    blockNo++;
+
+    const keys = [];
+    for (const u of unis) {
+      const key = `${parseInt(u.pre, 10)}-${u.suf}`;                           // 1-X و 01-X نفس الموحد
+      let g = groups.get(key);
+      if (!g) { g = { key, disp: u.disp, ids: [], occ: 0, forms: new Set(), order: order++ }; groups.set(key, g); }
+      g.occ++; g.forms.add(u.disp);
+      if (!keys.includes(key)) keys.push(key);
+      if (u.reversed) { const k = `${u.raw} → ${u.disp}`; N.rev.set(k, (N.rev.get(k) || 0) + 1); }
+      else if (u.raw !== u.disp) { const k = `${u.raw} → ${u.disp}`; N.fmt.set(k, (N.fmt.get(k) || 0) + 1); }
+    }
+
+    if (!keys.length) { orphans.push(...ids); continue; }
+    if (keys.length > 1) N.multi.push(`معاملة ${blockNo}: ${keys.map(k => groups.get(k).disp).join(' ، ')}`);
+    const owner = keys[0];
+    for (const id of ids) {
+      const cur = idOwner.get(id);
+      if (!cur) { idOwner.set(id, owner); groups.get(owner).ids.push(id); }
+      else if (cur === owner) N.dupId.set(id, (N.dupId.get(id) || 1) + 1);
+      else N.conflict.push(`${id}: ${groups.get(cur).disp} / ${groups.get(owner).disp}`);
+    }
+  }
+
+  const ready = [];
+  for (const g of groups.values()) {
+    if (g.occ > 1) N.mergeU.push(`${g.disp} ×${g.occ}`);
+    if (g.forms.size > 1) N.variant.push(`${[...g.forms].join(' = ')} → ${g.disp}`);
+    if (!g.ids.length) N.noIds.push(g.disp); else ready.push(g);
+  }
+  const orphanIds = [...new Set(orphans)].filter(id => !idOwner.has(id));
+
+  /* التجميع: أكبر موحد الأول، وكل موحد يتحط في أقرب رسالة يملاها لأقرب رقم للحد (والموحد عمّاله مبيتقسموش)، بشرط ما تعدّيش عدد الموحدات اللي في المعاملة الحد الأقصى */
+  const bins = [];
+  const sorted = [...ready].sort((x, y) => y.ids.length - x.ids.length || x.order - y.order);
+  for (const g of sorted) {
+    const n = g.ids.length;
+    if (n > limit) { bins.push({ groups: [g], size: n, over: true }); N.oversize.push(`${g.disp}: ${n} عامل`); continue; }
+    let best = null;
+    for (const b of bins) {
+      if (b.over || b.groups.length >= maxU) continue;   // معاملة وصلت للحد الأقصى من الموحدات
+      const rem = limit - b.size - n;
+      if (rem >= 0 && (!best || rem < best.rem)) best = { b, rem };
+    }
+    if (best) { best.b.groups.push(g); best.b.size += n; } else bins.push({ groups: [g], size: n, over: false });
+  }
+  bins.forEach(b => b.groups.sort((x, y) => x.order - y.order));
+  /* الترتيب النهائي: 1) المعاملات اللي بالظبط = الحد  2) اللي أقل من الحد (الأقرب للحد الأول)  3) اللي أكبر من الحد (الأقرب للحد الأول) */
+  const rank = b => (b.over ? 2 : (b.size === limit ? 0 : 1));
+  bins.sort((a, b) => rank(a) - rank(b)
+    || (rank(a) === 1 ? b.size - a.size : rank(a) === 2 ? a.size - b.size : 0)
+    || a.groups[0].order - b.groups[0].order);
+
+  return { blockCount: blockNo, groups: ready, bins, notes: N, orphanIds, workers: idOwner.size };
+}
+
+function grpMessageText(bin, gap) {
+  return bin.groups.map(g => [g.disp, ...g.ids].join('\n')).join('\n'.repeat(gap + 1));
+}
+
+function grpNoteLines(r) {
+  const N = r.notes, withCount = ([k, c]) => (c > 1 ? `${k} ×${c}` : k);
+  return {
+    multi: N.multi,
+    rev: [...N.rev].map(withCount),
+    fmt: [...N.fmt].map(withCount),
+    variant: N.variant,
+    mergeU: N.mergeU,
+    dupId: [...N.dupId].map(([id, c]) => `${id} ×${c}`),
+    conflict: [...new Set(N.conflict)],
+    noIds: N.noIds,
+    orphan: r.orphanIds,
+    oversize: N.oversize
+  };
+}
+
+/* ============================== الواجهة (نسخة الويب) ============================== */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+let toastTimer = null;
+function toast(msg, kind, ms) {
+  const t = $('#toast');
+  t.textContent = msg; t.dataset.kind = kind || 'ok'; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms || 1800);
+}
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
+}
+
+const GRP = {
+  input: $('#groupInput'), limit: $('#groupLimit'), maxU: $('#groupMaxU'), stats: $('#groupStats'),
+  notes: $('#groupNotes'), results: $('#groupResults'), clear: $('#groupClearBtn'), sepIn: $('#groupSepIn')
+};
+const GRP_NOTE_META = [
+  ['multi',    'rev',  'معاملة فيها أكتر من موحد مختلف (الهويات اتحطت تحت الأول)'],
+  ['rev',      'rev',  'موحدات معكوسة اتعدّل ترتيبها'],
+  ['fmt',      'info', 'موحدات اتظبط شكلها (مسافات / شرطة سفلية)'],
+  ['variant',  'info', 'نفس الموحد بشكلين (1- و 01-) واتدمجوا'],
+  ['mergeU',   'dup',  'موحدات مكررة اتدمجت'],
+  ['dupId',    'dup',  'هويات مكررة اتشالت'],
+  ['conflict', 'dup',  'هوية تحت أكتر من موحد (اتحطت تحت الأول بس)'],
+  ['noIds',    'rev',  'موحدات بدون هويات (اتتجاهلت)'],
+  ['orphan',   'rev',  'هويات بدون موحد (مش داخلة في أي معاملة)'],
+  ['oversize', 'rev',  'موحد عماله أكتر من الحد (اتحط لوحده في معاملة كاملة)']
+];
+let grpReport = '';
+const grpGap = () => Number((document.querySelector('input[name="groupGap"]:checked') || {}).value || 2);
+
+function grpRender() {
+  const raw = GRP.input.value;
+  const limit = Math.min(1000, parseInt(GRP.limit.value, 10) || 0);
+  const maxU = Math.min(100, Math.max(1, parseInt(GRP.maxU.value, 10) || 8));
+  GRP.results.replaceChildren(); GRP.stats.replaceChildren(); GRP.notes.replaceChildren(); GRP.notes.hidden = true;
+  grpReport = '';
+
+  if (!raw.trim()) { GRP.results.appendChild(el('div', 'empty', 'ألصق المعاملات واكتب عدد العمال، وهتظهر لك المعاملات المجمّعة هنا.')); return; }
+  if (limit < 1) { GRP.results.appendChild(el('div', 'empty', 'اكتب عدد العمال في المعاملة الواحدة (1 أو أكتر).')); return; }
+  store.set('wps.group.limit', String(limit));
+  store.set('wps.group.maxU', String(maxU));
+  store.set('wps.group.sepIn', GRP.sepIn.value);
+  const r = grpParse(raw, limit, maxU, grpBuildSep(GRP.sepIn.value)), gap = grpGap();
+  const lines = grpNoteLines(r);
+
+  [[r.blockCount, 'معاملات مقروءة'], [r.groups.length, 'موحدات (بعد الدمج)'], [r.workers, 'عمال (بدون تكرار)'], [r.bins.length, `معاملات ناتجة (حد ${limit} عامل / ${maxU} موحد)`]]
+    .forEach(([n, label]) => { const d = el('div', 'gstat'); d.append(el('b', '', String(n)), el('span', '', label)); GRP.stats.appendChild(d); });
+
+  const head = el('div', 'sec-title'); head.appendChild(el('h3', '', 'ملاحظات التجميع'));
+  const cp = el('button', 'btn quiet sm'); cp.type = 'button'; cp.textContent = 'نسخ الملاحظات';
+  head.appendChild(cp); GRP.notes.appendChild(head);
+  const report = [`تقرير التجميع — ${r.blockCount} معاملة مقروءة، ${r.groups.length} موحد، ${r.workers} عامل، ${r.bins.length} معاملة ناتجة (حد ${limit})`];
+  let any = false;
+  GRP_NOTE_META.forEach(([k, tone, title]) => {
+    const arr = lines[k]; if (!arr || !arr.length) return;
+    any = true;
+    const box = el('div', 'gnote'), h = el('div', 'gnote-h');
+    h.append(el('span', `tag ${tone}`, title), el('b', '', `(${arr.length})`));
+    const body = el('div', 'gnote-b');
+    arr.slice(0, 40).forEach(t => body.appendChild(el('code', '', t)));
+    if (arr.length > 40) body.appendChild(el('code', '', `… و ${arr.length - 40} كمان`));
+    box.append(h, body); GRP.notes.appendChild(box);
+    report.push(`- ${title} (${arr.length}): ${arr.join(' | ')}`);
+  });
+  if (!any) { GRP.notes.appendChild(el('div', 'gok', 'مفيش تكرار ولا موحدات معكوسة ولا حاجة اتعدّلت ✓')); report.push('- مفيش أي تعديلات.'); }
+  grpReport = report.join('\n');
+  cp.onclick = async () => toast((await copyText(grpReport)) ? 'تم نسخ الملاحظات.' : 'تعذّر النسخ.', 'ok', 1800);
+  GRP.notes.hidden = false;
+
+  if (!r.bins.length) { GRP.results.appendChild(el('div', 'empty', 'مش لاقي موحدات مع هويات في النص ده.')); return; }
+  const cards = el('div', 'gcards');
+  const kindOf = b => (b.over ? 'gt' : (b.size === limit ? 'eq' : 'lt'));
+  const RANK = { eq: 0, lt: 1, gt: 2 };
+  const bins = [...r.bins].sort((a, b) => {
+    const ka = kindOf(a), kb = kindOf(b);
+    if (ka !== kb) return RANK[ka] - RANK[kb];
+    if (ka === 'gt') return a.size - b.size;
+    return 0;
+  });
+  bins.forEach((b, i) => {
+    const text = grpMessageText(b, gap);
+    const card = el('div', 'gcard'), hd = el('div', 'gcard-head');
+    const row = el('div', 'gcard-row'), chips = el('div', 'gcard-chips');
+    const full = !b.over && b.size === limit;
+    const c1 = el('span', 'chip', `${b.size} / ${limit} عامل`); c1.dataset.tone = b.over ? 'warn' : (full ? 'ok' : 'idle');
+    chips.append(c1, el('span', 'chip', `${b.groups.length} / ${maxU} موحد`));
+    if (b.over) { const c = el('span', 'chip', 'أكبر من الحد'); c.dataset.tone = 'warn'; chips.appendChild(c); }
+    const btn = el('button', 'btn primary sm'); btn.type = 'button';
+    const lbl = el('span', '', 'نسخ'); btn.appendChild(lbl);
+    btn.onclick = async () => {
+      if (!(await copyText(text))) { toast('تعذّر النسخ.', 'err', 2500); return; }
+      card.classList.add('done'); lbl.textContent = 'تم ✓';
+      setTimeout(() => { lbl.textContent = 'نسخ'; }, 1800);
+    };
+    row.append(el('b', '', `معاملة ${i + 1}`), btn);
+    hd.append(row, chips);
+    card.append(hd, el('pre', 'gtext', text)); cards.appendChild(card);
+  });
+  GRP.results.appendChild(cards);
+}
+
+let _grpTimer = null;
+const grpSoon = () => { clearTimeout(_grpTimer); _grpTimer = setTimeout(grpRender, 120); };
+GRP.limit.value = store.get('wps.group.limit', '18');
+GRP.maxU.value = store.get('wps.group.maxU', '8');
+GRP.sepIn.value = store.get('wps.group.sepIn', '');
+(function () {
+  const g = store.get('wps.group.gap', '2');
+  $$('input[name="groupGap"]').forEach(r => { r.checked = r.value === g; });
+  if (!$$('input[name="groupGap"]').some(r => r.checked)) $('input[name="groupGap"][value="2"]').checked = true;
+})();
+GRP.input.addEventListener('input', grpSoon);
+GRP.limit.addEventListener('input', grpSoon);
+GRP.maxU.addEventListener('input', grpSoon);
+GRP.sepIn.addEventListener('input', grpSoon);
+$$('input[name="groupGap"]').forEach(r => r.addEventListener('change', () => { store.set('wps.group.gap', r.value); grpRender(); }));
+GRP.clear.onclick = () => { GRP.input.value = ''; grpRender(); GRP.input.focus(); };
+$('#groupPasteBtn').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (t) { GRP.input.value = t; grpRender(); return; } } catch (e) {}
+  toast('الصق يدوي في الخانة (المتصفح مش سامح بالقراءة التلقائية).', 'warn', 2600);
+  GRP.input.focus();
+};
+grpRender();
+</script>
+</body>
+</html>
