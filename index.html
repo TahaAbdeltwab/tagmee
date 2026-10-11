@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="تجميع المعاملات">
 <title>تجميع المعاملات</title>
 <style>
 :root{--bg:#f3f6f6;--surface:#fff;--surface-2:#eef3f3;--line:#d9e2e2;--ink:#12292b;--ink-2:#37575a;--ink-3:#6b8588;--accent:#0f766e;--accent-soft:#d6efec;--ok:#177a3c;--ok-soft:#dcf3e3;--warn:#8a5a00;--warn-soft:#fdeccb;--bad:#a1342b;--bad-soft:#fbe0dd;--info:#1d5fa8;--info-soft:#dbe9f8;--r:14px}
@@ -25,6 +31,9 @@ textarea:focus,input.field:focus{outline:2px solid var(--accent);outline-offset:
 .gctl .ctl{display:flex;flex-direction:column;gap:5px}
 .gctl .ctl>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}
 .gctl .full{grid-column:1/-1}
+.gctl .chk{flex-direction:row;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.gctl .chk input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.gctl .chk span{font-size:14px;color:var(--ink)}
 .gctl input[type=number]{text-align:center;direction:ltr;font-weight:700}
 .gctl input.sepfield{text-align:center}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -92,6 +101,7 @@ textarea:focus,input.field:focus{outline:2px solid var(--accent);outline-offset:
         <label><input type="radio" name="groupGap" value="2" checked><span>سطرين</span></label>
       </div>
     </div>
+    <label class="ctl full chk"><input id="groupWa" type="checkbox" checked><span>تجاهل التاريخ واسم المرسل (النسخ العادي من واتساب) واعتبار كل رسالة معاملة</span></label>
     <label class="ctl full"><span>الفاصل بين المعاملات (اختياري)</span><input id="groupSepIn" class="field sepfield" type="text" dir="auto" spellcheck="false" placeholder="تلقائي: ----------"></label>
   </div>
 </div>
@@ -126,12 +136,26 @@ function grpBuildSep(custom) {
   return new RegExp(esc(t));
 }
 
-function grpParse(rawText, limit, maxU, sepRe) {
+/* رأس رسالة واتساب (النسخ العادي): [7:15 م, 11/10/2026] الاسم: النص   أو   11/10/2026, 7:15 م - الاسم: النص
+   بنشيله ونحط مكانه علامة فاصل (\u0001) عشان كل رسالة تبقى معاملة منفصلة */
+const WA_HEAD_RES = [
+  /^[ \t]*\[[^\]\n]{0,40}\d{1,2}:\d{2}[^\]\n]{0,40}\][ \t]*[^:\n]{1,60}:[ \t]*/gm,
+  /^[ \t]*\d{1,4}[\/.]\d{1,2}[\/.]\d{1,4}[,\u060C]?[ \t]+\d{1,2}:\d{2}(?::\d{2})?[ \t]*(?:[AaPp]\.?[Mm]\.?|[\u0645\u0635])?[ \t]*-[ \t]*[^:\n]{1,60}:[ \t]*/gm
+];
+function grpMarkWaHeaders(text) {
+  let count = 0;
+  for (const re of WA_HEAD_RES) text = text.replace(re, () => { count++; return '\n\u0001\n'; });
+  return { text, count };
+}
+
+function grpParse(rawText, limit, maxU, sepRe, waOn) {
   maxU = Math.max(1, maxU || 8);                 // أقصى عدد موحدات في المعاملة الواحدة بعد التجميع
-  const text = grpNormalizeText(rawText);
-  const blocks = text.split(sepRe || GRP_SEP).map(b => b.trim()).filter(Boolean);
+  const norm = grpNormalizeText(rawText);
+  const wa = (waOn === false) ? { text: norm, count: 0 } : grpMarkWaHeaders(norm);
+  const splitRe = new RegExp('\\u0001|(?:' + (sepRe || GRP_SEP).source + ')');
+  const blocks = wa.text.split(splitRe).map(b => b.trim()).filter(Boolean);
   const N = { multi: [], rev: new Map(), fmt: new Map(), variant: [], mergeU: [], dupId: new Map(),
-              conflict: [], noIds: [], oversize: [] };
+              conflict: [], noIds: [], oversize: [], wa: wa.count };
   const groups = new Map();     // مفتاح الموحد ← {disp, ids, occ, forms, order}
   const idOwner = new Map();    // الهوية ← مفتاح الموحد اللي اتحطت تحته
   const orphans = [];
@@ -226,7 +250,8 @@ function grpNoteLines(r) {
     conflict: [...new Set(N.conflict)],
     noIds: N.noIds,
     orphan: r.orphanIds,
-    oversize: N.oversize
+    oversize: N.oversize,
+    wa: N.wa ? [`${N.wa} رسالة واتساب (اتشال منها التاريخ واسم المرسل)`] : []
   };
 }
 
@@ -268,9 +293,10 @@ async function copyText(text) {
 
 const GRP = {
   input: $('#groupInput'), limit: $('#groupLimit'), maxU: $('#groupMaxU'), stats: $('#groupStats'),
-  notes: $('#groupNotes'), results: $('#groupResults'), clear: $('#groupClearBtn'), sepIn: $('#groupSepIn')
+  notes: $('#groupNotes'), results: $('#groupResults'), clear: $('#groupClearBtn'), sepIn: $('#groupSepIn'), wa: $('#groupWa')
 };
 const GRP_NOTE_META = [
+  ['wa',       'info', 'رسائل واتساب اتفصلت (اتشال التاريخ واسم المرسل)'],
   ['multi',    'rev',  'معاملة فيها أكتر من موحد مختلف (الهويات اتحطت تحت الأول)'],
   ['rev',      'rev',  'موحدات معكوسة اتعدّل ترتيبها'],
   ['fmt',      'info', 'موحدات اتظبط شكلها (مسافات / شرطة سفلية)'],
@@ -297,7 +323,7 @@ function grpRender() {
   store.set('wps.group.limit', String(limit));
   store.set('wps.group.maxU', String(maxU));
   store.set('wps.group.sepIn', GRP.sepIn.value);
-  const r = grpParse(raw, limit, maxU, grpBuildSep(GRP.sepIn.value)), gap = grpGap();
+  const r = grpParse(raw, limit, maxU, grpBuildSep(GRP.sepIn.value), GRP.wa.checked), gap = grpGap();
   const lines = grpNoteLines(r);
 
   [[r.blockCount, 'معاملات مقروءة'], [r.groups.length, 'موحدات (بعد الدمج)'], [r.workers, 'عمال (بدون تكرار)'], [r.bins.length, `معاملات ناتجة (حد ${limit} عامل / ${maxU} موحد)`]]
@@ -361,6 +387,8 @@ const grpSoon = () => { clearTimeout(_grpTimer); _grpTimer = setTimeout(grpRende
 GRP.limit.value = store.get('wps.group.limit', '18');
 GRP.maxU.value = store.get('wps.group.maxU', '8');
 GRP.sepIn.value = store.get('wps.group.sepIn', '');
+GRP.wa.checked = store.get('wps.group.wa', '1') === '1';
+GRP.wa.addEventListener('change', () => { store.set('wps.group.wa', GRP.wa.checked ? '1' : '0'); grpRender(); });
 (function () {
   const g = store.get('wps.group.gap', '2');
   $$('input[name="groupGap"]').forEach(r => { r.checked = r.value === g; });
@@ -378,6 +406,8 @@ $('#groupPasteBtn').onclick = async () => {
   GRP.input.focus();
 };
 grpRender();
+
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); }); }
 </script>
 </body>
 </html>
