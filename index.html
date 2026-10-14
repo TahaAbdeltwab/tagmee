@@ -15,6 +15,7 @@
 :root{--bg:#f3f6f6;--surface:#fff;--surface-2:#eef3f3;--line:#d9e2e2;--ink:#12292b;--ink-2:#37575a;--ink-3:#6b8588;--accent:#0f766e;--accent-soft:#d6efec;--ok:#177a3c;--ok-soft:#dcf3e3;--warn:#8a5a00;--warn-soft:#fdeccb;--bad:#a1342b;--bad-soft:#fbe0dd;--info:#1d5fa8;--info-soft:#dbe9f8;--r:14px}
 @media(prefers-color-scheme:dark){:root{--bg:#0d1819;--surface:#14262a;--surface-2:#1b3135;--line:#27434a;--ink:#e6f1f1;--ink-2:#b4cacc;--ink-3:#84a0a3;--accent:#2dd4bf;--accent-soft:#12403f;--ok:#5fd68a;--ok-soft:#14361f;--warn:#f0b955;--warn-soft:#3a2d10;--bad:#f28b82;--bad-soft:#3d1c19;--info:#7db8f5;--info-soft:#132c47}}
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Naskh Arabic",sans-serif;line-height:1.6;padding:14px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left))}
 .wrap{max-width:1100px;margin:0 auto}
@@ -95,7 +96,19 @@ textarea:focus,input.field:focus{outline:2px solid var(--accent);outline-offset:
   <div class="gctl">
     <label class="ctl"><span>عدد العمال في المعاملة</span><input id="groupLimit" class="field" type="number" min="1" max="1000" step="1" inputmode="numeric" value="18"></label>
     <label class="ctl"><span>أقصى عدد موحدات</span><input id="groupMaxU" class="field" type="number" min="1" max="100" step="1" inputmode="numeric" value="8"></label>
-    <div class="ctl"><span>الفاصل بين الموحدات</span>
+    <div class="ctl"><span>شكل المعاملة</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="groupLayout" value="each" checked><span>موحد وتحته هوياته</span></label>
+        <label><input type="radio" name="groupLayout" value="split"><span>الموحدات ثم الهويات</span></label>
+      </div>
+    </div>
+    <div class="ctl" id="groupGap2Wrap" hidden><span>الفاصل بين الموحدات والهويات</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="groupGap2" value="1" checked><span>سطر فاضي</span></label>
+        <label><input type="radio" name="groupGap2" value="2"><span>سطرين</span></label>
+      </div>
+    </div>
+    <div class="ctl" id="groupGapWrap"><span>الفاصل بين الموحدات</span>
       <div class="seg" role="radiogroup">
         <label><input type="radio" name="groupGap" value="1"><span>سطر فاضي</span></label>
         <label><input type="radio" name="groupGap" value="2" checked><span>سطرين</span></label>
@@ -113,7 +126,7 @@ textarea:focus,input.field:focus{outline:2px solid var(--accent);outline-offset:
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
 /* ---------- المحرك: قراءة النص + دمج المكرر + التجميع (دوال نقية بدون واجهة) ---------- */
-const GRP_SEP = /[-_=*~\u0640]{4,}/;   // فاصل المعاملات: 4 رموز أو أكتر ورا بعض (---- أو ____ ...)
+const GRP_SEP = /-{4,}/;   // الفاصل الافتراضي: شرط ---- (4 أو أكتر) بس. أي رمز تاني (نجوم / مساواة ...) مش فاصل إلا لو انت كتبته في خانة الفاصل
 
 function grpNormalizeText(s) {
   return String(s || '')
@@ -234,7 +247,13 @@ function grpParse(rawText, limit, maxU, sepRe, waOn) {
   return { blockCount: blockNo, groups: ready, bins, notes: N, orphanIds, workers: idOwner.size };
 }
 
-function grpMessageText(bin, gap) {
+function grpMessageText(bin, gap, layout, gap2) {
+  if (layout === 'split') {
+    // كل الموحدات ورا بعض (موحد في كل سطر) ← فاصل ← كل الهويات (هوية في كل سطر)
+    const unis = bin.groups.map(g => g.disp).join('\n');
+    const ids = bin.groups.map(g => g.ids.join('\n')).join('\n');
+    return unis + '\n'.repeat((gap2 || 1) + 1) + ids;
+  }
   return bin.groups.map(g => [g.disp, ...g.ids].join('\n')).join('\n'.repeat(gap + 1));
 }
 
@@ -309,6 +328,8 @@ const GRP_NOTE_META = [
   ['oversize', 'rev',  'موحد عماله أكتر من الحد (اتحط لوحده في معاملة كاملة)']
 ];
 let grpReport = '';
+const grpLayout = () => (document.querySelector('input[name="groupLayout"]:checked') || {}).value || 'each';
+const grpGap2 = () => Number((document.querySelector('input[name="groupGap2"]:checked') || {}).value || 1);
 const grpGap = () => Number((document.querySelector('input[name="groupGap"]:checked') || {}).value || 2);
 
 function grpRender() {
@@ -323,7 +344,7 @@ function grpRender() {
   store.set('wps.group.limit', String(limit));
   store.set('wps.group.maxU', String(maxU));
   store.set('wps.group.sepIn', GRP.sepIn.value);
-  const r = grpParse(raw, limit, maxU, grpBuildSep(GRP.sepIn.value), GRP.wa.checked), gap = grpGap();
+  const r = grpParse(raw, limit, maxU, grpBuildSep(GRP.sepIn.value), GRP.wa.checked), gap = grpGap(), layout = grpLayout(), gap2 = grpGap2();
   const lines = grpNoteLines(r);
 
   [[r.blockCount, 'معاملات مقروءة'], [r.groups.length, 'موحدات (بعد الدمج)'], [r.workers, 'عمال (بدون تكرار)'], [r.bins.length, `معاملات ناتجة (حد ${limit} عامل / ${maxU} موحد)`]]
@@ -361,7 +382,7 @@ function grpRender() {
     return 0;
   });
   bins.forEach((b, i) => {
-    const text = grpMessageText(b, gap);
+    const text = grpMessageText(b, gap, layout, gap2);
     const card = el('div', 'gcard'), hd = el('div', 'gcard-head');
     const row = el('div', 'gcard-row'), chips = el('div', 'gcard-chips');
     const full = !b.over && b.size === limit;
@@ -393,6 +414,22 @@ GRP.wa.addEventListener('change', () => { store.set('wps.group.wa', GRP.wa.check
   const g = store.get('wps.group.gap', '2');
   $$('input[name="groupGap"]').forEach(r => { r.checked = r.value === g; });
   if (!$$('input[name="groupGap"]').some(r => r.checked)) $('input[name="groupGap"][value="2"]').checked = true;
+})();
+(function () {
+  const syncLayoutUI = () => {
+    const split = grpLayout() === 'split';
+    $('#groupGapWrap').hidden = split;
+    $('#groupGap2Wrap').hidden = !split;
+  };
+  const lay = store.get('wps.group.layout', 'each');
+  $$('input[name="groupLayout"]').forEach(r => { r.checked = r.value === lay; });
+  if (!$$('input[name="groupLayout"]').some(r => r.checked)) $('input[name="groupLayout"][value="each"]').checked = true;
+  const g2 = store.get('wps.group.gap2', '1');
+  $$('input[name="groupGap2"]').forEach(r => { r.checked = r.value === g2; });
+  if (!$$('input[name="groupGap2"]').some(r => r.checked)) $('input[name="groupGap2"][value="1"]').checked = true;
+  syncLayoutUI();
+  $$('input[name="groupLayout"]').forEach(r => r.addEventListener('change', () => { store.set('wps.group.layout', r.value); syncLayoutUI(); grpRender(); }));
+  $$('input[name="groupGap2"]').forEach(r => r.addEventListener('change', () => { store.set('wps.group.gap2', r.value); grpRender(); }));
 })();
 GRP.input.addEventListener('input', grpSoon);
 GRP.limit.addEventListener('input', grpSoon);
