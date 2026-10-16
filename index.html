@@ -161,6 +161,17 @@ function grpMarkWaHeaders(text) {
   return { text, count };
 }
 
+/* رقم الدخول (اليوزر): أي رقم 10 أرقام في السطر اللي قبل سطر فيه @ (كلمة السر) مش هوية، بنشيله قبل القراءة */
+function stripLoginNumbers(text) {
+  const lines = String(text || '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim()) j++;            // نتخطى الأسطر الفاضية
+    if (j < lines.length && lines[j].includes('@')) lines[i] = lines[i].replace(/(?<!\d)[123]\d{9}(?!\d)/g, ' ');
+  }
+  return lines.join('\n');
+}
+
 function grpParse(rawText, limit, maxU, sepRe, waOn) {
   maxU = Math.max(1, maxU || 8);                 // أقصى عدد موحدات في المعاملة الواحدة بعد التجميع
   const norm = grpNormalizeText(rawText);
@@ -176,13 +187,12 @@ function grpParse(rawText, limit, maxU, sepRe, waOn) {
 
   for (const block of blocks) {
     // «الرقم الوطني الموحد» (بيبدأ بـ 7) مش هوية ولا موحد، نشيله قبل القراءة
-    const body = block.replace(/الرقم\s*الوطني\s*الموحد\s*[:：]?\s*\d+/g, ' ');
+    const body = stripLoginNumbers(block.replace(/الرقم\s*الوطني\s*الموحد\s*[:：]?\s*\d+/g, ' '));
 
     const unis = [];
     for (const m of body.matchAll(/(?<!\d)(\d{1,8})[ \t]*[-_][ \t]*(\d{1,8})(?:[ \t]*[-_][ \t]*(\d{1,8}))?(?!\d)/g)) {
       if (m[3] !== undefined) continue;                                        // تاريخ زي 23-09-2026
       let a = m[1], b = m[2];
-      if (/^(19|20)\d{2}$/.test(a) || /^(19|20)\d{2}$/.test(b)) continue;      // سنة
       const la = a.length, lb = b.length;
       if (!((la <= 2 && lb >= 2 && lb <= 8) || (lb <= 2 && la >= 2 && la <= 8))) continue;
       let reversed = false;
